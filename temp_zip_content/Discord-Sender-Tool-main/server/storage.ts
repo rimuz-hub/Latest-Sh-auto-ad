@@ -1,5 +1,9 @@
-import { configs, type InsertConfig, type Config } from "@shared/schema";
 import { db } from "./db";
+import {
+  configs,
+  type Config,
+  type InsertConfig
+} from "@shared/schema";
 import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
@@ -20,7 +24,10 @@ export class DatabaseStorage implements IStorage {
   }
 
   async saveConfig(insertConfig: InsertConfig): Promise<Config> {
-    const [config] = await db.insert(configs).values(insertConfig).returning();
+    const [config] = await db
+      .insert(configs)
+      .values(insertConfig)
+      .returning();
     return config;
   }
 

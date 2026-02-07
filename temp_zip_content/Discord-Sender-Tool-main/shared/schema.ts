@@ -2,20 +2,23 @@ import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// We'll store configurations so users don't have to re-type them
 export const configs = pgTable("configs", {
   id: serial("id").primaryKey(),
   name: text("name").notNull().default("Default Config"),
-  token: text("token").notNull(),
+  token: text("token").notNull(), // User token
   message: text("message").notNull(),
-  channelIds: text("channel_ids").notNull(), // Comma-separated string
+  channelIds: text("channel_ids").notNull(), // Stored as comma-separated string
   delaySeconds: integer("delay_seconds").notNull().default(60),
-  imageUrls: text("image_urls"), // Comma-separated string
-  createdAt: timestamp("created_at").defaultNow(),
+  imageUrls: text("image_urls"), // Comma-separated or JSON array of image URLs
+  isRunning: boolean("is_running").default(false),
+  lastRunAt: timestamp("last_run_at"),
 });
 
 export const insertConfigSchema = createInsertSchema(configs).omit({ 
   id: true, 
-  createdAt: true 
+  isRunning: true, 
+  lastRunAt: true 
 });
 
 export type Config = typeof configs.$inferSelect;

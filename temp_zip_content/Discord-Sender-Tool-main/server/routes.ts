@@ -3,13 +3,12 @@ import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
 import { z } from "zod";
-import express from "express";
+import fetch from "node-fetch";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import express from "express";
 
-
-// Setup multer for file uploads
 const upload = multer({
   storage: multer.diskStorage({
     destination: "client/public/uploads/",
@@ -81,46 +80,24 @@ class AutomationManager {
             // In a real scenario, we'd use FormData to send files to Discord.
             // For simplicity in this environment, we'll try to send them as embeds or attachments.
             // User token "self-botting" often uses a specific JSON structure.
-            // Note: Sending messages with user tokens is technically against TOS.
-            // This is implemented as per user request to replicate functionality.
-            
-            // Note: The original code used URLSearchParams here, but it might not be correct for Discord.
-            // Keeping it consistent with logic flow, but primarily we rely on JSON or Multipart.
+            const response = await fetch(`https://discord.com/api/v9/channels/${channelId.trim()}/messages`, {
+              method: 'POST',
+              headers: { 'Authorization': token, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                content: message,
+                embeds: imageUrls.map(url => ({ image: { url: `${process.env.REPL_SLUG}.${process.env.REPL_OWNER}.repl.co${url}` } }))
+              })
+            });
 
-            // If we have images, we actually need to send them as multipart/form-data
-            // However, most self-bots just send URLs or use a specific JSON structure.
-            // Let's try sending as a proper multipart message if images are present.
-            
-            if (imageUrls.length > 0) {
-              const form = new FormData();
-              form.append('content', message);
-              
-              for (let i = 0; i < imageUrls.length; i++) {
-                const url = imageUrls[i];
-                if (url.startsWith('/uploads/')) {
-                  const filePath = path.join(process.cwd(), 'client/public', url);
-                  if (fs.existsSync(filePath)) {
-                    const blob = await fs.openAsBlob(filePath);
-                    form.append(`files[${i}]`, blob, path.basename(filePath));
-                  }
-                }
-              }
-
-              const imgResponse = await fetch(`https://discord.com/api/v9/channels/${channelId.trim()}/messages`, {
-                method: 'POST',
-                headers: { 
-                  'Authorization': token,
-                  // Content-Type is set automatically by fetch when body is FormData
-                },
-                body: form
-              });
-
-              if (imgResponse.ok) {
-                this.addLog('success', `Sent to ${channelId} with images`);
-                success = true;
+            if (response.ok) {
+              this.addLog('success', `Sent to ${channelId} with images`);
+              success = true;
+            } else {
+              const errData: any = await response.json().catch(() => ({}));
+              if (errData.code === 50013 || response.status === 403) {
+                this.addLog('info', `No image permission in ${channelId}. Sending text only.`);
               } else {
-                const errData: any = await imgResponse.json().catch(() => ({}));
-                this.addLog('error', `Image send failed in ${channelId}: ${imgResponse.status} ${JSON.stringify(errData)}`);
+                this.addLog('error', `Image send failed in ${channelId}: ${response.status}`);
               }
             }
           }
@@ -140,7 +117,6 @@ class AutomationManager {
         } catch (error: any) {
           this.addLog('error', `Error ${channelId}: ${error.message}`);
         }
-        // Small delay between channels to avoid rate limits
         await new Promise(r => setTimeout(r, 1000));
       }
     };
@@ -153,12 +129,10 @@ class AutomationManager {
 const automation = new AutomationManager();
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
-  // Serve uploaded files
-  app.use("/uploads", express.static(path.join(process.cwd(), "client/public/uploads")));
+  app.use("/uploads", express.static("client/public/uploads"));
 
   app.get(api.configs.list.path, async (req, res) => {
-    const configs = await storage.getAllConfigs();
-    res.json(configs);
+    res.json(await storage.getAllConfigs());
   });
 
   app.get(api.configs.get.path, async (req, res) => {
@@ -170,14 +144,9 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   app.post(api.configs.save.path, async (req, res) => {
     try {
       const input = api.configs.save.input.parse(req.body);
-      const config = await storage.saveConfig(input);
-      res.json(config);
+      res.json(await storage.saveConfig(input));
     } catch (err: any) {
-      if (err instanceof z.ZodError) {
-        res.status(400).json({ message: err.errors[0].message });
-      } else {
-        res.status(400).json({ message: err.message });
-      }
+      res.status(400).json({ message: err.message });
     }
   });
 
@@ -187,11 +156,8 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.post(api.upload.images.path, upload.array("images"), (req, res) => {
-    // Cast to any because typescript types for multer request augmentation are tricky
-    const files = (req as any).files;
-    if (!files) return res.status(400).json({ message: "No files uploaded" });
-    
-    const urls = files.map((f: any) => `/uploads/${f.filename}`);
+    const files = req.files as Express.Multer.File[];
+    const urls = files.map(f => `/uploads/${f.filename}`);
     res.json({ urls });
   });
 
@@ -201,11 +167,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       automation.start(input.token, input.message, input.channelIds, input.delaySeconds, input.imageUrls);
       res.json({ message: "Started" });
     } catch (err: any) {
-      if (err instanceof z.ZodError) {
-        res.status(400).json({ message: err.errors[0].message });
-      } else {
-        res.status(400).json({ message: err.message });
-      }
+      res.status(400).json({ message: err.message });
     }
   });
 

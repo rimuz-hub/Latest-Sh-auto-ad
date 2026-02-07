@@ -83,11 +83,10 @@ export default {
         },
       },
       fontFamily: {
-        sans: ["var(--font-sans)"],
+        sans: ["'Rajdhani'", "var(--font-sans)"],
         serif: ["var(--font-serif)"],
-        mono: ["'Fira Code'", "'JetBrains Mono'", "monospace"],
-        display: ["'Fira Code'", "monospace"],
-        body: ["'JetBrains Mono'", "monospace"],
+        mono: ["'JetBrains Mono'", "var(--font-mono)"],
+        display: ["'Orbitron'", "sans-serif"],
       },
       keyframes: {
         "accordion-down": {
