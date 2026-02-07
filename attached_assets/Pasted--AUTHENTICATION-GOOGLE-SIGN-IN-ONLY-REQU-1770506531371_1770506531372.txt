@@ -1,0 +1,140 @@
+
+
+--------------------------------------------------
+
+AUTHENTICATION — GOOGLE SIGN-IN ONLY (REQUIRED)
+
+- Implement authentication using **Google Sign-In / Google OAuth ONLY**
+- ALL users MUST authenticate via a Google account
+- ❌ DO NOT use Replit authentication
+- ❌ DO NOT rely on Replit user identity, sessions, or headers
+- ❌ DO NOT allow anonymous or fallback login methods
+
+--------------------------------------------------
+
+LOGOUT SYSTEM (REQUIRED)
+
+- Implement a **proper logout mechanism**
+- Logout must:
+  - Fully terminate the server-side session
+  - Clear authentication state
+  - Prevent access to protected routes after logout
+- After logout:
+  - User must be required to re-authenticate via Google Sign-In
+- Logout must NOT rely on client-side state only
+- Logout must work reliably across page refreshes
+
+--------------------------------------------------
+
+WHITELIST ENFORCEMENT (SERVER-SIDE ONLY)
+
+- After successful Google authentication:
+  - Check the authenticated Google email against a server-side whitelist
+- If the email is NOT in the whitelist:
+  - Immediately block access
+  - Render an "Unauthorized" page
+  - Do NOT redirect to app content
+  - Do NOT expose whitelist contents to the frontend
+
+Whitelist Storage (ENV / CONFIG)
+ALLOWED_EMAILS=email1@gmail.com,email2@gmail.com,platisthere@gmail.com
+
+--------------------------------------------------
+
+OWNER ACCESS CONTROL
+
+OWNER EMAIL:
+platisthere@gmail.com
+
+- Only the OWNER may:
+  - See admin / modify / privileged UI controls
+  - Access privileged backend routes
+
+Enforcement:
+- Owner-only UI elements must be COMPLETELY HIDDEN (not disabled) for non-owner users
+- Enforce permissions on BOTH frontend visibility and backend routes
+- Backend must NEVER trust frontend role checks
+
+--------------------------------------------------
+
+SESSION & BROWSER RESTRICTIONS
+
+Chrome-Only Enforcement
+- Allow Google Chrome ONLY
+- Detect browser via User-Agent
+- If browser is NOT Chrome:
+  - Immediately deny access
+  - Show an error message
+  - Do NOT load app content
+
+Session Rules
+- Sessions must be:
+  - Strictly bound to the authenticated Google account
+  - Invalidated on logout
+  - Invalidated if a different Google account attempts reuse
+- Prevent session sharing or swapping across Google accounts
+
+--------------------------------------------------
+
+SINGLE INSTANCE / HOST LOCK (CRITICAL)
+
+Goal:
+Ensure ONLY ONE active hosting instance of the auto ad system can run at a time.
+
+Lock Requirements:
+- Implement a persistent lock (file-based or database-based)
+- On server startup:
+  - If a lock already exists, ABORT startup
+  - Log the startup attempt
+- On graceful shutdown:
+  - Properly release the lock
+- Lock must persist across crashes and restarts until explicitly released
+
+--------------------------------------------------
+
+SECURITY & MIDDLEWARE (MANDATORY ORDER)
+
+All protected routes MUST enforce middleware in EXACT order:
+1. Google OAuth authentication
+2. Email whitelist verification
+3. Chrome-only browser enforcement
+4. Active instance lock validation
+
+Security Rules:
+- Do NOT leak whitelist contents
+- Do NOT leak auth logic
+- Do NOT expose internal security details to the client
+- All enforcement logic must remain server-side
+
+--------------------------------------------------
+
+IMPLEMENTATION CONSTRAINTS
+
+- Add only what is necessary
+- Do NOT reorganize folders
+- Do NOT rename existing functions
+- Do NOT introduce new architectures
+- Reuse existing patterns where possible
+
+Required Comments (Concise):
+- Authorization flow
+- Whitelist enforcement
+- Logout handling
+- Instance lock mechanism
+
+OAuth Setup:
+- Clearly mark where Google OAuth credentials
+  (Client ID / Client Secret)
+  must be inserted
+
+--------------------------------------------------
+
+DO NOT:
+- Use Replit authentication in any form
+- Add warnings, disclaimers, or policy commentary
+- Explain why security is important
+- Suggest alternatives
+- Over-engineer
+
+FOCUS:
+Implement EXACTLY what is described above — nothing more, nothing less.
