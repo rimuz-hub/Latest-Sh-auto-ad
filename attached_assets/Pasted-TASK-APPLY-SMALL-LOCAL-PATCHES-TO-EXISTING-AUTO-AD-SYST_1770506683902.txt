@@ -1,0 +1,115 @@
+TASK: APPLY SMALL, LOCAL PATCHES TO EXISTING AUTO AD SYSTEM
+
+IMPORTANT:
+This task must be completed in the CURRENT MODE.
+Do NOT switch modes.
+Do NOT perform architectural or comprehensive changes.
+
+You are modifying an ALREADY WORKING auto ad website codebase.
+
+====================
+HARD LIMITS
+====================
+- MODIFY EXISTING FILES ONLY
+- ADD SMALL, ISOLATED CODE BLOCKS ONLY
+- DO NOT refactor, redesign, or reorganize anything
+- DO NOT introduce new architectures or frameworks
+- DO NOT “ensure” or “rebuild” security systems
+- DO NOT touch unrelated logic
+- If something works, DO NOT change it
+
+====================
+AUTHENTICATION (GOOGLE ONLY)
+====================
+- Add Google Sign-In using standard Google OAuth
+- ❌ DO NOT use Replit authentication
+- ❌ DO NOT use Replit user identity or headers
+- Use existing session mechanism; extend it only if required
+
+====================
+LOGOUT (SMALL PATCH)
+====================
+- Add a simple logout endpoint or handler
+- Logout must:
+  - Destroy the existing server-side session
+  - Clear auth state
+- No new session system
+- No client-only logout
+
+====================
+EMAIL WHITELIST (SERVER ONLY)
+====================
+- After Google login:
+  - Check email against ENV variable:
+
+ALLOWED_EMAILS=email1@gmail.com,email2@gmail.com,platisthere@gmail.com
+
+- If NOT allowed:
+  - Return an Unauthorized page
+  - Do NOT redirect into app
+  - Do NOT expose whitelist
+
+====================
+OWNER CONTROLS (MINIMAL)
+====================
+OWNER EMAIL:
+platisthere@gmail.com
+
+- Owner check = simple email comparison
+- Hide owner-only UI elements for non-owner users
+- Add a lightweight backend check on owner routes
+- Do NOT add role systems or permissions frameworks
+
+====================
+BROWSER CHECK (LIGHTWEIGHT)
+====================
+- Add a simple User-Agent check for Chrome
+- If not Chrome:
+  - Return an error page
+- Do NOT add browser libraries
+
+====================
+INSTANCE LOCK (REPLIT-SAFE)
+====================
+- Use existing runtime
+- Implement a small file-based lock
+- Lock must:
+  - Prevent multiple hosts
+  - Allow restarts if previous process is dead
+- DO NOT abort startup unless another live process exists
+- No infrastructure changes
+
+====================
+MIDDLEWARE ORDER (ONLY WHERE ALREADY USED)
+====================
+Apply ONLY to routes that already have middleware:
+
+1. Google auth check
+2. Email whitelist check
+3. Chrome check
+4. Instance lock check
+
+====================
+COMMENTS
+====================
+Add short comments ONLY where code is added:
+- “Google auth check”
+- “Whitelist check”
+- “Logout handler”
+- “Instance lock”
+
+====================
+STRICTLY DO NOT
+====================
+- Switch modes
+- Redesign auth
+- Introduce new systems
+- Add explanations or commentary
+- Over-engineer
+
+====================
+GOAL
+====================
+Small, safe patches that keep the app working exactly as it does now,
+with Google login, logout, whitelist, owner checks, Chrome check, and
+a Replit-safe instance lock.

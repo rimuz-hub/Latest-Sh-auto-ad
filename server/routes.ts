@@ -26,6 +26,7 @@ import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integra
     } catch (e) {}
   };
 
+  // Instance lock check on startup
   if (fs.existsSync(LOCK_FILE)) {
     const pid = fs.readFileSync(LOCK_FILE, "utf-8");
     try {
@@ -43,7 +44,7 @@ import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integra
   process.on("SIGINT", () => { releaseLock(); process.exit(); });
   process.on("SIGTERM", () => { releaseLock(); process.exit(); });
 
-// Middleware: Chrome only
+// Middleware: Chrome check
 const chromeOnly = (req: Request, res: Response, next: NextFunction) => {
   const ua = req.headers["user-agent"] || "";
   if (!ua.includes("Chrome") || ua.includes("Edge") || ua.includes("OPR")) {
@@ -52,20 +53,20 @@ const chromeOnly = (req: Request, res: Response, next: NextFunction) => {
   next();
 };
 
-// Middleware: Whitelist enforcement
+// Middleware: Whitelist check
 const whitelistOnly = (req: Request, res: Response, next: NextFunction) => {
   const user = req.user as any;
-  const email = user?.claims?.email;
+  const email = user?.email;
   if (!email || !ALLOWED_EMAILS.includes(email)) {
     return res.status(403).send("<h1>UNAUTHORIZED</h1><p>Your account is not whitelisted.</p>");
   }
   next();
 };
 
-// Middleware: Owner only
+// Owner check
 const ownerOnly = (req: Request, res: Response, next: NextFunction) => {
   const user = req.user as any;
-  const email = user?.claims?.email;
+  const email = user?.email;
   if (email !== OWNER_EMAIL) {
     return res.status(403).json({ message: "Owner access required" });
   }
@@ -230,7 +231,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
 
   app.get(api.configs.list.path, async (req, res) => {
     const user = req.user as any;
-    const configs = await storage.getAllConfigs(user.claims.email);
+    const configs = await storage.getAllConfigs(user.email);
     res.json(configs);
   });
 
@@ -239,7 +240,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     if (!config) return res.status(404).json({ message: "Not found" });
     
     const user = req.user as any;
-    if (config.userEmail !== user.claims.email) {
+    if (config.userEmail !== user.email) {
        return res.status(403).json({ message: "Forbidden" });
     }
     res.json(config);
@@ -250,7 +251,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
       const user = req.user as any;
       const input = api.configs.save.input.parse({
         ...req.body,
-        userEmail: user.claims.email
+        userEmail: user.email
       });
       const config = await storage.saveConfig(input);
       res.json(config);
@@ -267,7 +268,7 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
     const config = await storage.getConfig(Number(req.params.id));
     if (config) {
       const user = req.user as any;
-      if (config.userEmail === user.claims.email) {
+      if (config.userEmail === user.email) {
         await storage.deleteConfig(Number(req.params.id));
       }
     }
