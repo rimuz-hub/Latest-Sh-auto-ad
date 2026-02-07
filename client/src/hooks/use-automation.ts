@@ -1,20 +1,30 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { api, buildUrl, type StartRequest, type InsertConfig } from "@shared/routes";
 import { useToast } from "@/hooks/use-toast";
+import { isUnauthorizedError, redirectToLogin } from "@/lib/auth-utils";
 
 // ============================================
 // AUTOMATION & STATUS HOOKS
 // ============================================
 
 export function useAutomationStatus() {
+  const { toast } = useToast();
   return useQuery({
     queryKey: [api.automation.status.path],
     queryFn: async () => {
       const res = await fetch(api.automation.status.path);
+      if (res.status === 401) {
+        redirectToLogin(toast);
+        throw new Error("Unauthorized");
+      }
       if (!res.ok) throw new Error("Failed to fetch status");
       return api.automation.status.responses[200].parse(await res.json());
     },
     refetchInterval: 2000, // Poll every 2 seconds
+    retry: (failureCount, error: any) => {
+      if (error?.message === "Unauthorized") return false;
+      return failureCount < 3;
+    }
   });
 }
 
@@ -30,6 +40,11 @@ export function useStartAutomation() {
         body: JSON.stringify(data),
       });
       
+      if (res.status === 401) {
+        redirectToLogin(toast);
+        throw new Error("Unauthorized");
+      }
+
       if (!res.ok) {
         if (res.status === 400) {
           const errorData = await res.json();
@@ -53,6 +68,7 @@ export function useStartAutomation() {
       });
     },
     onError: (error) => {
+      if (error.message === "Unauthorized") return;
       toast({
         title: "ACCESS DENIED",
         description: error.message,
@@ -72,6 +88,10 @@ export function useStopAutomation() {
       const res = await fetch(api.automation.stop.path, {
         method: "POST",
       });
+      if (res.status === 401) {
+        redirectToLogin(toast);
+        throw new Error("Unauthorized");
+      }
       if (!res.ok) throw new Error("Failed to stop automation");
       return api.automation.stop.responses[200].parse(await res.json());
     },
@@ -92,13 +112,22 @@ export function useStopAutomation() {
 // ============================================
 
 export function useConfigs() {
+  const { toast } = useToast();
   return useQuery({
     queryKey: [api.configs.list.path],
     queryFn: async () => {
       const res = await fetch(api.configs.list.path);
+      if (res.status === 401) {
+        redirectToLogin(toast);
+        throw new Error("Unauthorized");
+      }
       if (!res.ok) throw new Error("Failed to fetch config");
       return api.configs.list.responses[200].parse(await res.json());
     },
+    retry: (failureCount, error: any) => {
+      if (error?.message === "Unauthorized") return false;
+      return failureCount < 3;
+    }
   });
 }
 
@@ -114,6 +143,10 @@ export function useSaveConfig() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(validated),
       });
+      if (res.status === 401) {
+        redirectToLogin(toast);
+        throw new Error("Unauthorized");
+      }
       if (!res.ok) throw new Error("Failed to save config");
       return api.configs.save.responses[200].parse(await res.json());
     },
@@ -126,6 +159,7 @@ export function useSaveConfig() {
       });
     },
     onError: (error) => {
+      if (error.message === "Unauthorized") return;
       toast({
         title: "UPLOAD FAILED",
         description: error.message || "Could not save configuration parameters.",
@@ -146,6 +180,10 @@ export function useDeleteConfig() {
       const res = await fetch(url, {
         method: "DELETE",
       });
+      if (res.status === 401) {
+        redirectToLogin(toast);
+        throw new Error("Unauthorized");
+      }
       if (!res.ok) throw new Error("Failed to delete config");
       return true;
     },
@@ -166,6 +204,7 @@ export function useDeleteConfig() {
 // ============================================
 
 export function useUploadImages() {
+  const { toast } = useToast();
   return useMutation({
     mutationFn: async (files: File[]) => {
       const formData = new FormData();
@@ -175,6 +214,11 @@ export function useUploadImages() {
         method: "POST",
         body: formData,
       });
+
+      if (res.status === 401) {
+        redirectToLogin(toast);
+        throw new Error("Unauthorized");
+      }
 
       if (!res.ok) throw new Error("Upload failed");
       return api.upload.images.responses[200].parse(await res.json());

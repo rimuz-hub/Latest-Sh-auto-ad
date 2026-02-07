@@ -3,15 +3,17 @@ import { db } from "./db";
 import { eq, desc } from "drizzle-orm";
 
 export interface IStorage {
-  getAllConfigs(): Promise<Config[]>;
+  getAllConfigs(userEmail: string): Promise<Config[]>;
   getConfig(id: number): Promise<Config | undefined>;
   saveConfig(config: InsertConfig): Promise<Config>;
   deleteConfig(id: number): Promise<void>;
 }
 
 export class DatabaseStorage implements IStorage {
-  async getAllConfigs(): Promise<Config[]> {
-    return await db.select().from(configs).orderBy(desc(configs.id));
+  async getAllConfigs(userEmail: string): Promise<Config[]> {
+    return await db.select().from(configs)
+      .where(eq(configs.userEmail, userEmail))
+      .orderBy(desc(configs.id));
   }
 
   async getConfig(id: number): Promise<Config | undefined> {

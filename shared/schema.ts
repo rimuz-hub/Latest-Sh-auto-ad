@@ -1,9 +1,12 @@
-import { pgTable, text, serial, integer, boolean, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, timestamp, varchar } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
+export * from "./models/auth";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
 export const configs = pgTable("configs", {
   id: serial("id").primaryKey(),
+  userEmail: text("user_email").notNull(),
   name: text("name").notNull().default("Default Config"),
   token: text("token").notNull(),
   message: text("message").notNull(),

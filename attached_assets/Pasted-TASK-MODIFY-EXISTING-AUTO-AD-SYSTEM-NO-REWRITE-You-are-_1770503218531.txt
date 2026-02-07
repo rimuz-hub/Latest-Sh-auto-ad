@@ -1,0 +1,125 @@
+TASK: MODIFY EXISTING AUTO AD SYSTEM (NO REWRITE)
+
+You are working on an existing, already functioning auto ad website codebase.
+
+ABSOLUTE RULES (NON-NEGOTIABLE)
+- Modify the existing project ONLY
+- DO NOT rewrite, refactor, or restructure unrelated code
+- DO NOT change existing logic unless explicitly required
+- Minimal code additions only
+- If something already works, leave it untouched
+
+--------------------------------------------------
+
+AUTHENTICATION — GOOGLE OAUTH (REQUIRED)
+
+- Add Google OAuth authentication
+- ALL users MUST sign in with a Google account
+- No alternative login methods allowed
+
+Whitelist Enforcement (SERVER-SIDE ONLY)
+- After Google login, check the authenticated email against a server-side whitelist
+- If the email is NOT in the whitelist:
+  - Immediately block access
+  - Render an "Unauthorized" page
+  - Do NOT redirect to app content
+  - Do NOT expose whitelist contents to frontend
+
+Whitelist Storage (ENV / CONFIG)
+ALLOWED_EMAILS=email1@gmail.com,email2@gmail.com,platisthere@gmail.com
+
+--------------------------------------------------
+
+OWNER ACCESS CONTROL
+
+OWNER EMAIL:
+platisthere@gmail.com
+
+- Only the OWNER may:
+  - See admin / modify / privileged UI controls
+  - Access privileged backend routes
+
+Enforcement:
+- Owner-only UI elements must be COMPLETELY HIDDEN (not disabled) for non-owner users
+- Enforce permissions on BOTH frontend visibility and backend routes
+- Backend must NEVER trust frontend role checks
+
+--------------------------------------------------
+
+SESSION & BROWSER RESTRICTIONS
+
+Chrome-Only Enforcement
+- Allow Google Chrome ONLY
+- Detect browser via User-Agent
+- If browser is NOT Chrome:
+  - Immediately deny access
+  - Show an error message
+  - Do NOT load app content
+
+Session Rules
+- Sessions must be strictly bound to the authenticated Google account
+- Prevent session reuse across different Google accounts
+- Invalidate session if account mismatch is detected
+
+--------------------------------------------------
+
+SINGLE INSTANCE / HOST LOCK (CRITICAL)
+
+Goal:
+Ensure ONLY ONE active hosting instance of the auto ad system can run at a time.
+
+Lock Requirements:
+- Implement a persistent lock (file-based or database-based)
+- On server startup:
+  - If a lock already exists, ABORT startup
+  - Log the startup attempt
+- On graceful shutdown:
+  - Properly release the lock
+- Lock must persist across crashes and restarts until explicitly released
+
+--------------------------------------------------
+
+SECURITY & MIDDLEWARE (MANDATORY ORDER)
+
+All protected routes MUST enforce middleware in EXACT order:
+1. Google OAuth authentication
+2. Email whitelist verification
+3. Chrome-only browser enforcement
+4. Active instance lock validation
+
+Security Rules:
+- Do NOT leak whitelist contents
+- Do NOT leak auth logic
+- Do NOT expose internal security details to the client
+- All enforcement logic must remain server-side
+
+--------------------------------------------------
+
+IMPLEMENTATION CONSTRAINTS
+
+- Add only what is necessary
+- Do NOT reorganize folders
+- Do NOT rename existing functions
+- Do NOT introduce new architectures
+- Reuse existing patterns where possible
+
+Required Comments (Concise):
+- Authorization flow
+- Whitelist enforcement
+- Instance lock mechanism
+
+OAuth Setup:
+- Clearly mark where Google OAuth credentials
+  (Client ID / Client Secret)
+  must be inserted
+
+--------------------------------------------------
+
+DO NOT:
+- Add warnings, disclaimers, or policy commentary
+- Explain why security is important
+- Suggest alternatives
+- Over-engineer
+
+FOCUS:
+Implement EXACTLY what is described above — nothing more, nothing less.

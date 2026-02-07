@@ -34,6 +34,7 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 export default function Dashboard() {
+  const { user, logout } = useAuth();
   const { toast } = useToast();
   const [showToken, setShowToken] = useState(false);
   const [loadDialogOpen, setLoadDialogOpen] = useState(false);
@@ -49,6 +50,7 @@ export default function Dashboard() {
 
   const isRunning = statusData?.isRunning ?? false;
   const logs = statusData?.logs ?? [];
+  const isOwner = user?.email === "platisthere@gmail.com";
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -138,7 +140,12 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="flex gap-3 w-full sm:w-auto">
+          <div className="flex gap-3 w-full sm:w-auto items-center">
+            <div className="hidden md:flex flex-col items-end mr-2 text-[10px] font-mono text-primary/60">
+              <span className="uppercase tracking-tighter">{user?.email}</span>
+              <span className="text-[8px] opacity-50">{isOwner ? "PRIVILEGED_ACCESS" : "STANDARD_USER"}</span>
+            </div>
+
             <Dialog open={loadDialogOpen} onOpenChange={setLoadDialogOpen}>
               <DialogTrigger asChild>
                 <CyberButton variant="secondary" className="flex-1 sm:flex-none">
@@ -148,7 +155,7 @@ export default function Dashboard() {
               </DialogTrigger>
               <DialogContent className="bg-black/95 border-primary text-primary font-mono">
                 <DialogHeader>
-                  <DialogTitle className="tracking-widest border-b border-primary/30 pb-2">SAVED_CONFIGURATIONS</DialogTitle>
+                  <DialogTitle className="tracking-widest border-b border-primary/30 pb-2">USER_SAVED_CONFIGS</DialogTitle>
                 </DialogHeader>
                 <div className="space-y-2 mt-4 max-h-[60vh] overflow-y-auto pr-2 custom-scrollbar">
                   {configs?.map(c => (
@@ -189,20 +196,31 @@ export default function Dashboard() {
               </DialogContent>
             </Dialog>
 
+            {isOwner && (
+              <CyberButton 
+                variant="primary" 
+                className="flex-1 sm:flex-none"
+                onClick={form.handleSubmit(data => {
+                  saveMutation.mutate({
+                    ...data,
+                    userEmail: user?.email || "",
+                    channelIds: data.channelIds,
+                    imageUrls: data.imageUrls.join(",")
+                  });
+                })}
+                isLoading={saveMutation.isPending}
+              >
+                <Save className="w-4 h-4 mr-2" />
+                SAVE CONFIG
+              </CyberButton>
+            )}
+
             <CyberButton 
-              variant="primary" 
-              className="flex-1 sm:flex-none"
-              onClick={form.handleSubmit(data => {
-                saveMutation.mutate({
-                  ...data,
-                  channelIds: data.channelIds,
-                  imageUrls: data.imageUrls.join(",")
-                });
-              })}
-              isLoading={saveMutation.isPending}
+              variant="outline" 
+              className="px-3 border-primary/30 text-primary/50 hover:text-primary"
+              onClick={() => (window.location.href = "/api/logout")}
             >
-              <Save className="w-4 h-4 mr-2" />
-              SAVE CONFIG
+              <LogOut className="w-4 h-4" />
             </CyberButton>
           </div>
         </header>

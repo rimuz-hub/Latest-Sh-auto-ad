@@ -1,4 +1,4 @@
-import type { Express } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import type { Server } from "http";
 import { storage } from "./storage";
 import { api } from "@shared/routes";
@@ -7,7 +7,56 @@ import express from "express";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integrations/auth";
 
+  // SECURITY: Whitelist enforcement
+  const ALLOWED_EMAILS = (process.env.ALLOWED_EMAILS || "platisthere@gmail.com").split(",").map(e => e.trim());
+  const OWNER_EMAIL = "platisthere@gmail.com";
+
+  // SECURITY: Instance Lock
+  const LOCK_FILE = path.join(process.cwd(), "instance.lock");
+  if (fs.existsSync(LOCK_FILE)) {
+    console.error("FATAL: Another instance is already running (Lock file exists).");
+    process.exit(1);
+  }
+  fs.writeFileSync(LOCK_FILE, process.pid.toString());
+  const releaseLock = () => {
+    try {
+      if (fs.existsSync(LOCK_FILE)) fs.unlinkSync(LOCK_FILE);
+    } catch (e) {}
+  };
+  process.on("exit", releaseLock);
+  process.on("SIGINT", () => { releaseLock(); process.exit(); });
+  process.on("SIGTERM", () => { releaseLock(); process.exit(); });
+
+// Middleware: Chrome only
+const chromeOnly = (req: Request, res: Response, next: NextFunction) => {
+  const ua = req.headers["user-agent"] || "";
+  if (!ua.includes("Chrome") || ua.includes("Edge") || ua.includes("OPR")) {
+    return res.status(403).send("<h1>ACCESS DENIED</h1><p>This system requires Google Chrome.</p>");
+  }
+  next();
+};
+
+// Middleware: Whitelist enforcement
+const whitelistOnly = (req: Request, res: Response, next: NextFunction) => {
+  const user = req.user as any;
+  const email = user?.claims?.email;
+  if (!email || !ALLOWED_EMAILS.includes(email)) {
+    return res.status(403).send("<h1>UNAUTHORIZED</h1><p>Your account is not whitelisted.</p>");
+  }
+  next();
+};
+
+// Middleware: Owner only
+const ownerOnly = (req: Request, res: Response, next: NextFunction) => {
+  const user = req.user as any;
+  const email = user?.claims?.email;
+  if (email !== OWNER_EMAIL) {
+    return res.status(403).json({ message: "Owner access required" });
+  }
+  next();
+};
 
 // Setup multer for file uploads
 const upload = multer({
@@ -153,23 +202,42 @@ class AutomationManager {
 const automation = new AutomationManager();
 
 export async function registerRoutes(httpServer: Server, app: Express): Promise<Server> {
+  // Authorization flow
+  await setupAuth(app);
+  registerAuthRoutes(app);
+
+  // SECURITY: Chrome-only, Auth, and Whitelist enforcement
+  app.use("/api", chromeOnly);
+  app.use("/api", isAuthenticated);
+  app.use("/api", whitelistOnly);
+  
   // Serve uploaded files
   app.use("/uploads", express.static(path.join(process.cwd(), "client/public/uploads")));
 
   app.get(api.configs.list.path, async (req, res) => {
-    const configs = await storage.getAllConfigs();
+    const user = req.user as any;
+    const configs = await storage.getAllConfigs(user.claims.email);
     res.json(configs);
   });
 
   app.get(api.configs.get.path, async (req, res) => {
     const config = await storage.getConfig(Number(req.params.id));
     if (!config) return res.status(404).json({ message: "Not found" });
+    
+    const user = req.user as any;
+    if (config.userEmail !== user.claims.email) {
+       return res.status(403).json({ message: "Forbidden" });
+    }
     res.json(config);
   });
 
-  app.post(api.configs.save.path, async (req, res) => {
+  app.post(api.configs.save.path, ownerOnly, async (req, res) => {
     try {
-      const input = api.configs.save.input.parse(req.body);
+      const user = req.user as any;
+      const input = api.configs.save.input.parse({
+        ...req.body,
+        userEmail: user.claims.email
+      });
       const config = await storage.saveConfig(input);
       res.json(config);
     } catch (err: any) {
@@ -182,7 +250,13 @@ export async function registerRoutes(httpServer: Server, app: Express): Promise<
   });
 
   app.delete(api.configs.delete.path, async (req, res) => {
-    await storage.deleteConfig(Number(req.params.id));
+    const config = await storage.getConfig(Number(req.params.id));
+    if (config) {
+      const user = req.user as any;
+      if (config.userEmail === user.claims.email) {
+        await storage.deleteConfig(Number(req.params.id));
+      }
+    }
     res.status(204).end();
   });
 
