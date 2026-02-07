@@ -15,16 +15,30 @@ import { setupAuth, registerAuthRoutes, isAuthenticated } from "./replit_integra
 
   // SECURITY: Instance Lock
   const LOCK_FILE = path.join(process.cwd(), "instance.lock");
-  if (fs.existsSync(LOCK_FILE)) {
-    console.error("FATAL: Another instance is already running (Lock file exists).");
-    process.exit(1);
-  }
-  fs.writeFileSync(LOCK_FILE, process.pid.toString());
   const releaseLock = () => {
     try {
-      if (fs.existsSync(LOCK_FILE)) fs.unlinkSync(LOCK_FILE);
+      if (fs.existsSync(LOCK_FILE)) {
+        const pid = fs.readFileSync(LOCK_FILE, "utf-8");
+        if (pid === process.pid.toString()) {
+          fs.unlinkSync(LOCK_FILE);
+        }
+      }
     } catch (e) {}
   };
+
+  if (fs.existsSync(LOCK_FILE)) {
+    const pid = fs.readFileSync(LOCK_FILE, "utf-8");
+    try {
+      process.kill(Number(pid), 0);
+      console.error("FATAL: Another instance is already running (Lock file exists).");
+      process.exit(1);
+    } catch (e) {
+      // Process not running, stale lock
+      releaseLock();
+    }
+  }
+  fs.writeFileSync(LOCK_FILE, process.pid.toString());
+
   process.on("exit", releaseLock);
   process.on("SIGINT", () => { releaseLock(); process.exit(); });
   process.on("SIGTERM", () => { releaseLock(); process.exit(); });
